@@ -65,7 +65,7 @@ jobs:
         run: pnpm install
 
       - name: Run linter
-        run:  pnpm run lint -- --fix
+        run:  pnpm run lint --fix
 
       - name: Run static typing check
         run: pnpm tsc --noEmit
