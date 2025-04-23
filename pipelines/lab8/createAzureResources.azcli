@@ -17,3 +17,8 @@ az staticwebapp create -n $swaName -g $rgName
 # Get the token for the ASWA
 az staticwebapp secrets list -n $swaName --query "properties.apiKey"
 az staticwebapp list --query "[].name"
+
+
+
+
+
