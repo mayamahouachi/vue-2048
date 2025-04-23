@@ -42,6 +42,7 @@ jobs:
           path: dist/
 
   static-analysis-and-tests:
+    needs: build
     runs-on: ubuntu-latest
     container: node:latest
     if: github.event_name == 'pull_request' || github.event_name == 'push'
