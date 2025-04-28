@@ -11,10 +11,6 @@ on:
       - lab9
   workflow_dispatch:
 
-permissions:
-  actions: write # For artifact upload/download
-  secrets: read
-
 jobs:
   build:
     runs-on: ubuntu-latest
