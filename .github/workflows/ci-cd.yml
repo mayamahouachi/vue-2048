@@ -9,7 +9,7 @@ on:
     branches:
       - main
       - lab9 
-  workflow_dispatch:
+  workflow_dispatch: 
 
 jobs:
   build:
@@ -66,33 +66,34 @@ jobs:
         run: pnpm install
 
       - name: Run linter
-        run:  pnpm run lint --fix
+        run: pnpm run lint --fix
 
       - name: Run static typing check
         run: pnpm tsc --noEmit
 
       - name: Run unit tests
         run: pnpm run test
-  
+
   deploy-qa:
-      runs-on: ubuntu-latest
-      container: node:latest
-      needs: build      
-      environment:
-        name: QA
-        url: https://thankful-meadow-0fb922910-qa.centralus.6.azurestaticapps.net/
-      steps:
-        - name: Checkout code
-          uses: actions/checkout@v4
-  
-        - name: Download dist artifact
-          uses: actions/download-artifact@v4
-          with:
-            name: dist
-            path: dist/
-  
-        - name: Install Azure Static Web Apps CLI
-          run: npm install -g @azure/static-web-apps-cli
-  
-        - name: Deploy to QA
-          run: swa deploy dist --deployment-token ${{ secrets.QA_DEPLOY_TOKEN }} --env QA
+    runs-on: ubuntu-latest
+    container: node:latest
+    needs: build
+    if: ${{ github.event_name == 'workflow_dispatch' }}  #  déclenchement manuel
+    environment:
+      name: QA
+      url: https://thankful-meadow-0fb922910-qa.centralus.6.azurestaticapps.net/
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Install Azure Static Web Apps CLI
+        run: npm install -g @azure/static-web-apps-cli
+
+      - name: Deploy to QA
+        run: swa deploy dist --deployment-token ${{ secrets.QA_DEPLOY_TOKEN }} --env QA
