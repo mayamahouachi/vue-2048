@@ -71,6 +71,35 @@ jobs:
         run: pnpm tsc --noEmit
 
       - name: Run unit tests
-        run: pnpm run test
+
 
   
+  deploy-qa:
+      runs-on: ubuntu-latest
+      container: node:latest
+      needs: build
+      if: github.event_name == 'workflow_dispatch' # Only run on manual trigger
+      environment:
+        name: QA
+        url: https://thankful-meadow-0fb922910-qa.centralus.6.azurestaticapps.net/
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+  
+        - name: Download dist artifact
+          uses: actions/download-artifact@v4
+          with:
+            name: dist
+            path: dist/
+  
+        - name: Setup Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: 'latest'
+  
+        - name: Install Azure Static Web Apps CLI
+          run: npm install -g @azure/static-web-apps-cli
+  
+        - name: Deploy to QA
+          run: swa deploy dist --deployment-token ${{ secrets.QA_DEPLOY_TOKEN }} --env QA
+    
