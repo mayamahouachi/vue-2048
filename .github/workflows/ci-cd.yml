@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - lab9 
+  workflow_dispatch:
 
 jobs:
   build:
@@ -78,6 +79,7 @@ jobs:
       container: node:latest
       needs: build
       if: github.event_name == 'workflow_dispatch'
+      
       environment:
         name: QA
         url: https://thankful-meadow-0fb922910-qa.centralus.6.azurestaticapps.net/
