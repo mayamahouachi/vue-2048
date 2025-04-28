@@ -4,12 +4,15 @@ on:
   push:
     branches:
       - main
-      - lab9 
+      - lab9
   pull_request:
     branches:
       - main
-      - lab9 
-  workflow_dispatch: 
+      - lab9
+  workflow_dispatch:
+
+permissions:
+  actions: write # For artifact upload/download
 
 jobs:
   build:
@@ -22,12 +25,12 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.0.0 
+          version: 10.0.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 'latest'
+          node-version: 'latest' 
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -46,7 +49,6 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     container: node:latest
-    if: github.event_name == 'pull_request' || github.event_name == 'push'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,12 +56,12 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.0.0 
+          version: 10.0.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 'latest'
+          node-version: '20.x'
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -72,16 +74,16 @@ jobs:
         run: pnpm tsc --noEmit
 
       - name: Run unit tests
-        run: pnpm run test
+        run: pnpm test
 
   deploy-qa:
     runs-on: ubuntu-latest
     container: node:latest
     needs: build
-    if: ${{ github.event_name == 'workflow_dispatch' }}  #  déclenchement manuel
+    if: github.event_name == 'workflow_dispatch'
     environment:
       name: QA
-      url: https://thankful-meadow-0fb922910-qa.centralus.6.azurestaticapps.net/
+      url: ${{ secrets.QA_ENVIRONMENT_URL }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
