@@ -1,0 +1,130 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - lab9
+  pull_request:
+    branches:
+      - main
+      - lab9
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * 1'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: node:latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'latest'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build package
+        run: pnpm build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  static-analysis-and-tests:
+    needs: build
+    runs-on: ubuntu-latest
+    container: node:latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run linter
+        run: pnpm run lint --fix
+
+      - name: Run static typing check
+        run: pnpm tsc --noEmit
+
+      - name: Run unit tests
+        run: pnpm test
+
+  deploy-qa:
+    runs-on: ubuntu-latest
+    container: node:latest
+    needs: build
+    if: github.event_name == 'workflow_dispatch'
+    environment:
+      name: QA
+      url: https://thankful-meadow-0fb922910-qa.centralus.6.azurestaticapps.net/
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Install Azure Static Web Apps CLI
+        run: npm install -g @azure/static-web-apps-cli
+
+      - name: Deploy to QA
+        run: swa deploy dist --deployment-token ${{ secrets.QA_DEPLOY_TOKEN }} --env QA
+
+
+  deploy-prod:
+    runs-on: ubuntu-latest
+    container: node:latest
+    needs: build
+    if: github.event_name == 'workflow_dispatch'
+    environment:
+      name: production
+      url: https://yellow-rock-024587c03.6.azurestaticapps.net/
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'latest'
+
+      - name: Install Azure Static Web Apps CLI
+        run: npm install -g @azure/static-web-apps-cli
+
+      - name: Deploy to Production
+        run: swa deploy dist --deployment-token ${{ secrets.PROD_DEPLOY_TOKEN }} --env production
