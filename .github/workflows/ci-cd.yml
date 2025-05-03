@@ -10,6 +10,8 @@ on:
       - main
       - lab9
   workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * 1'
 
 jobs:
   build:
@@ -27,7 +29,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 'latest' 
+          node-version: 'latest'
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -77,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     container: node:latest
     needs: build
-    if: github.event_name == 'workflow_dispatch' 
+    if: github.event_name == 'workflow_dispatch'
     environment:
       name: QA
       url: https://thankful-meadow-0fb922910-qa.centralus.6.azurestaticapps.net/
@@ -97,12 +99,12 @@ jobs:
       - name: Deploy to QA
         run: swa deploy dist --deployment-token ${{ secrets.QA_DEPLOY_TOKEN }} --env QA
 
-  
+
   deploy-prod:
     runs-on: ubuntu-latest
     container: node:latest
     needs: build
-    if: github.event_name == 'workflow_dispatch' 
+    if: github.event_name == 'workflow_dispatch'
     environment:
       name: production
       url: https://yellow-rock-024587c03.6.azurestaticapps.net/
