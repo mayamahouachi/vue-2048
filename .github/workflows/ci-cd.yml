@@ -138,47 +138,56 @@ jobs:
 
       - name: Deploy to Production
         run: swa deploy dist --deployment-token ${{ secrets.PROD_DEPLOY_TOKEN }} --env production
-
   
   
   deploy-temp:
     if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     needs: [build, static-analysis-and-tests]
+    environment:
+      name: PR-Temporary
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-  
+    
       - name: Download dist artifact
         uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
-  
+    
       - name: Install Azure CLI
         run: |
-          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-          az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -p ${{ secrets.AZURE_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
-
-  
-      - name: Create temporary environment
+          curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+          az login --service-principal --username ${{ secrets.AZURE_CLIENT_ID }} --password ${{ secrets.AZURE_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
+    
+      - name: Create temporary Azure Static Web App
         id: create-env
         run: |
-          ENV_NAME=vue2048-deploy-temp
-          az staticwebapp environment create \
-            --name $ENV_NAME \
+          TEMP_APP_NAME="vue2048-temp-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.sha }}"
+          az staticwebapp create \
+            --name $TEMP_APP_NAME \
             --resource-group rg-vue2048-prod \
-            --source dist \
-            --deployment-token ${{ secrets.QA_TEMP_DEPLOY_TOKEN }}
-          echo "env_url=https://$ENV_NAME.azurestaticapps.net" >> $GITHUB_OUTPUT
-  
+            --token ${{ secrets.PR_DEPLOY_TOKEN }}
+          TEMP_URL=$(az staticwebapp show --name $TEMP_APP_NAME --query "defaultHostname" -o tsv)
+          echo "env_url=$TEMP_URL" >> $GITHUB_ENV
+          echo "temp_app_name=$TEMP_APP_NAME" >> $GITHUB_ENV
+    
+      - name: Deploy to temporary environment
+        run: |
+          npm install -g @azure/static-web-apps-cli
+          swa deploy dist --deployment-token ${{ secrets.QA_TEMP_DEPLOY_TOKEN }} --env PR-Temporary
+    
       - name: Comment with temp URL
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
             github.rest.issues.createComment({
-              issue_number: context.payload.pull_request.number,
-              body: 'Temporary environment deployed: ${{ steps.create-env.outputs.env_url }}'
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: 'Temporary environment deployed: ${{ env.env_url }}'
             })
+
   
-    
