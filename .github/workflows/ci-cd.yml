@@ -138,11 +138,12 @@ jobs:
 
       - name: Deploy to Production
         run: swa deploy dist --deployment-token ${{ secrets.PROD_DEPLOY_TOKEN }} --env production
-          
-  deploy-temp:
-    if: github.event_name == 'push'
-    #if: github.event_name == 'pull_request'
 
+
+
+            
+  deploy-temp:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     needs: [build, static-analysis-and-tests]
     steps:
@@ -155,19 +156,12 @@ jobs:
           name: dist
           path: dist/
   
-      - name: Install Azure CLI and jq
+      - name: Install Azure CLI
         run: |
           curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-          sudo apt-get update && sudo apt-get install -y jq
   
-      - name: Parse AZURE_CREDENTIALS and login to Azure
+      - name: Azure login using PR environment variables
         run: |
-          echo '${{ secrets.AZURE_CREDENTIALS }}' > creds.json
-          export AZURE_CLIENT_ID=$(jq -r '.clientId' creds.json)
-          export AZURE_CLIENT_SECRET=$(jq -r '.clientSecret' creds.json)
-          export AZURE_TENANT_ID=$(jq -r '.tenantId' creds.json)
-          export AZURE_SUBSCRIPTION_ID=$(jq -r '.subscriptionId' creds.json)
-  
           az login --service-principal \
             -u "$AZURE_CLIENT_ID" \
             -p "$AZURE_CLIENT_SECRET" \
@@ -179,12 +173,13 @@ jobs:
           ENV_NAME=vue2048-deploy-temp
           az staticwebapp environment create \
             --name $ENV_NAME \
-            --resource-group rg-vue2048-prod \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
             --source dist \
-            --deployment-token ${{ secrets.QA_TEMP_DEPLOY_TOKEN }}
+            --deployment-token "$QA_TEMP_DEPLOY_TOKEN"
           echo "env_url=https://$ENV_NAME.azurestaticapps.net" >> $GITHUB_OUTPUT
   
-      - name: Echo link
+      - name: Comment with temp URL
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
@@ -192,3 +187,4 @@ jobs:
               issue_number: context.payload.pull_request.number,
               body: 'Temporary environment deployed: ${{ steps.create-env.outputs.env_url }}'
             })
+  
