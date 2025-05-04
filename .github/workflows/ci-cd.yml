@@ -7,6 +7,8 @@ on:
       - lab9
     paths-ignore:
       - 'docs/**'
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - main
@@ -22,6 +24,11 @@ on:
         type: boolean
   schedule:
     - cron: '0 8 * * 1'
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
   build:
@@ -118,8 +125,8 @@ jobs:
     runs-on: ubuntu-latest
     container: node:latest
     needs: build
-    #if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
-    if: github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    #if: github.event_name == 'workflow_dispatch'
     environment:
       name: production
       url: https://yellow-rock-024587c03.6.azurestaticapps.net/
@@ -138,24 +145,71 @@ jobs:
 
       - name: Deploy to Production
         run: swa deploy dist --deployment-token ${{ secrets.PROD_DEPLOY_TOKEN }} --env production
-  deploy-pr:
+  
+  # deploy-temp:
+  #     if: github.event_name == 'push' || github.event_name == 'pull_request'
+  #     runs-on: ubuntu-latest
+  #     needs: [build, static-analysis-and-tests]
+  #     environment:
+  #       name: PR-Temporary
+  #     steps:
+  #       - name: Checkout code
+  #         uses: actions/checkout@v4
+      
+  #       - name: Download dist artifact
+  #         uses: actions/download-artifact@v4
+  #         with:
+  #           name: dist
+  #           path: dist/
+      
+  #       - name: Install Azure CLI
+  #         run: |
+  #           curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+  #           az login --service-principal --username ${{ secrets.AZURE_CLIENT_ID }} --password ${{ secrets.AZURE_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
+      
+  #       - name: Create temporary Azure Static Web App
+  #         id: create-env
+  #         run: |
+  #           TEMP_APP_NAME="vue2048-temp"
+  #           az staticwebapp create \
+  #             --name $TEMP_APP_NAME \
+  #             --resource-group rg-vue2048-prod \
+  #             --token ${{ secrets.PR_DEPLOY_TOKEN }}
+  #           TEMP_URL=$(az staticwebapp show --name $TEMP_APP_NAME --query "defaultHostname" -o tsv)
+  #           echo "env_url=$TEMP_URL" >> $GITHUB_ENV
+  #           echo "temp_app_name=$TEMP_APP_NAME" >> $GITHUB_ENV
+      
+  #       - name: Deploy to temporary environment
+  #         run: |
+  #           npm install -g @azure/static-web-apps-cli
+  #           swa deploy dist --deployment-token ${{ secrets.QA_TEMP_DEPLOY_TOKEN }} --env PR-Temporary
+      
+  #       - name: Comment with temp URL 
+  #         if: github.event_name == 'pull_request'
+  #         uses: actions/github-script@v7
+  #         with:
+  #           script: |
+  #             github.rest.issues.createComment({
+  #               body: 'Temporary environment deployed: ${{ env.env_url }}'
+  #             })
+
+
+  
+  create-release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    container: node:latest
-    needs: [build, static-analysis-and-tests]
-    #if: github.event_name == 'pull_request'
-    if: github.event_name == 'pull_request' || github.event_name == 'push'
-    environment:
-      name: PR
-      url: https://thankful-meadow-0fb922910-pr.centralus.6.azurestaticapps.net/
     steps:
-      - name: Download dist artifact
-        uses: actions/download-artifact@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+  
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: dist
-          path: dist/
-
-      - name: Install Azure Static Web Apps CLI
-        run: npm install -g @azure/static-web-apps-cli
-
-      - name: Deploy to PR environment
-        run: swa deploy dist --deployment-token ${{ secrets.QA_DEPLOY_TOKEN }} --env PR
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          body: Release notes for version ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+              
