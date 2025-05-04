@@ -7,14 +7,14 @@ on:
       - lab9
     paths-ignore:
       - 'docs/**'
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - main
       - lab9
     paths-ignore:
       - 'docs/**'
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       run-static-analysis:
