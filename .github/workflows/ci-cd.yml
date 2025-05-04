@@ -59,6 +59,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     container: node:latest
+    #if: github.event_name == 'workflow_dispatch' --job is skipped
     if: github.event_name != 'workflow_dispatch' || github.event.inputs.run-static-analysis == 'true'
     steps:
       - name: Checkout code
@@ -91,6 +92,7 @@ jobs:
     runs-on: ubuntu-latest
     container: node:latest
     needs: build
+    #if: github.event_name == 'workflow_dispatch'  --job is skipped
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     environment:
       name: QA
@@ -136,3 +138,24 @@ jobs:
 
       - name: Deploy to Production
         run: swa deploy dist --deployment-token ${{ secrets.PROD_DEPLOY_TOKEN }} --env production
+  deploy-pr:
+    runs-on: ubuntu-latest
+    container: node:latest
+    needs: [build, static-analysis-and-tests]
+    #if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    environment:
+      name: PR
+      url: https://thankful-meadow-0fb922910-pr.centralus.6.azurestaticapps.net/
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Install Azure Static Web Apps CLI
+        run: npm install -g @azure/static-web-apps-cli
+
+      - name: Deploy to PR environment
+        run: swa deploy dist --deployment-token ${{ secrets.QA_DEPLOY_TOKEN }} --env PR
