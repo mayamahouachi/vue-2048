@@ -130,11 +130,6 @@ jobs:
           name: dist
           path: dist/
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-            node-version: 'latest'
-           
       - name: Install Azure Static Web Apps CLI
         run: npm install -g @azure/static-web-apps-cli
 
