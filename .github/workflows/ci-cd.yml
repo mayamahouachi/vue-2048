@@ -5,10 +5,14 @@ on:
     branches:
       - main
       - lab9
+    paths-ignore:
+      - 'docs/**'
   pull_request:
     branches:
       - main
       - lab9
+    paths-ignore:
+      - 'docs/**'
   workflow_dispatch:
     inputs:
       run-static-analysis:
@@ -129,8 +133,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 'latest'
-
+            node-version: 'latest'
+           
       - name: Install Azure Static Web Apps CLI
         run: npm install -g @azure/static-web-apps-cli
 
